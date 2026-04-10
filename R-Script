@@ -1,0 +1,248 @@
+#=================================================================#
+#====================== Gregor's Comparison ======================#
+#======================= Charlie Somervell =======================#
+#===========================  4/10/26  ===========================#
+#=================================================================#
+# Gregor's Comparison is an alternate multiple comparisons method #
+# to test for significant differences between pairings of means.  #
+# The comparison takes a more liberal approach to the Bonferroni  #
+# Correction by artificially raising the degrees of freedom used  #
+# in calculating the t critical value. The method is excellent in #
+# controlling the FWER to an acceptable range, and it is, for the #
+# most part, on par with the power of Tukey's HSD.                #
+#=================================================================#
+
+## Parts 1 & 2: Designing and Implementing Gregor's Comparison
+
+greg_comparison <- function(means, J, MSE, alpha = 0.05) {
+# means: vector of sample means
+# J: number of observations per group
+# MSE: mean square error from ANOVA
+# alpha: significance level
+	diffmat <- outer(means,means,"-")
+# Gregor's Comparison:
+# Alpha given same tweak as Bonferroni
+# Tweak the degrees of freedom (Increase but control for values of I and J)
+	I <- length(means)
+	N <- factorial(I)/(2*factorial(I-2))
+	SE <- sqrt((2*MSE)/J)
+	golden <- (1+sqrt(5))/2
+	acrit <- (alpha/(N))
+	t_crit <- qt(1-(acrit/2), df = (golden * ((I*(J-1))) + I^2) / sqrt(J/10))
+# Gregor's Significant Difference
+	GSD <- t_crit*SE
+# Prep for Data Frame
+	# Create Differences Vector
+		diff <- c()				
+		for (i in 2:I) {
+		newdiff <- diffmat[i:I,(i-1)]
+		diff <- c(diff,newdiff)}
+	# Create Group 1 Vector
+		g1 <- c()
+		for (i in 1:I) {
+		addg1 <- rep(means[i], times = I-i)
+		g1 <- c(g1,addg1)}
+	# Create Group 2 Vector
+		g2 <- c()
+		for (i in 2:I) {
+		addg2 <- means[c(i:I)]
+		g2 <- c(g2,addg2)}
+	# Create Significance Vector
+		sig <- c()
+		for (i in 1:N) {
+		out <- c(ifelse(abs(diff[i])>CSD,TRUE,FALSE))
+		sig <- c(sig,out)}
+# Construct the data frame displaying significant differences
+	# Comp: tracks the number of comparisons made
+	# Group 1, Group 2: the pair being compared
+	# Diff: the difference in means
+	# Significant: either TRUE (significant) or FALSE (not significant)
+	comparisons <- data.frame(
+				Comp = 1:N,
+				group1 = g1,
+				group2 = g2,
+				diff = diff,
+				significant = sig)
+# Returns a data frame displaying all differences and their significance
+	return(comparisons)
+	}
+
+# Demonstration with Example 11.5 (Oil Filters)
+means <- c(14.5,13.8,13.3,14.3,13.1)
+greg_comparison(means, J = 9, MSE = 0.088, alpha = 0.05)
+	# Gregor's Comparison determined that the only non-significant differences were
+		# between Brands 1 & 4 and 3 & 5. Brand 2 is significantly different
+		# from all other brands.
+
+
+## Part 3: Validating Gregor's Comparison via Simulation
+
+# Set Up Simulation Function
+simulate_fwer <- function(I, J, sigma = 1, n_sim = 10000, alpha = 0.05) {
+	false_rejections <- 0
+
+	for (sim in 1:n_sim) {
+	# Generate data under H0 (all means = 0)
+	data <- matrix(rnorm(I*J, mean = 0, sd = sigma), nrow = I, ncol = J)
+	
+	# Calculate summary statistics
+	means <- rowMeans(data)
+	MSE <- mean(apply(data, 1, var))  # Simplified; use pooled variance
+
+	# Apply Gregor's Comparison
+	results <- greg_comparison(means, J, MSE, alpha = 0.05)
+
+	# Check if any rejection occurred
+	if (any(results$significant == "TRUE")) {
+	false_rejections <- false_rejections + 1
+	}
+	}
+
+return(false_rejections / n_sim)
+}
+
+# Test Simulation Parameters (Scenarios A-E)
+
+# Scenario A (I = 3, J = 10)
+A <- simulate_fwer(3,10)
+print(A)
+# Scenario B (I = 5, J = 10)
+B <- simulate_fwer(5,10)
+print(B)
+# Scenario C (I = 7, J = 10)
+C <- simulate_fwer(7,10)
+print(C)
+# Scenario D (I = 5, J = 5)
+D <- simulate_fwer(5,5)
+print(D)
+# Scenario E (I = 5, J = 20)
+E <- simulate_fwer(5,20)
+print(E)
+
+
+## Part 4: Power Analysis
+
+# Set Up Simulation Function (Power Analysis for Gregor's and Comparison w/ Tukey's HSD)
+simulate_power <- function(delta, I = 5, J = 10, sigma = 1, n_sim = 1000, alpha = 0.05) {
+	correct_rejections <- 0
+	tukey_rejections <- 0
+
+  	# Count the four possible outcomes:
+  	both_reject <- 0	# Both Gregor and Tukey reject
+  	gregor_only <- 0	# Only Gregor rejects
+  	tukey_only <- 0		# Only Tukey rejects
+  	neither <- 0		# Neither reject
+
+	for (sim in 1:n_sim) {
+	# Generate data under H0 (means 1,2,3 = 0)
+	dataH0 <- matrix(rnorm(3*10, mean = 0, sd = sigma), nrow = 3, ncol = 10)
+	# Generate data under HA (means 4,5 = Delta)
+	dataHA <- matrix(rnorm(2*10, mean = delta, sd = sigma), nrow = 2, ncol = 10)
+
+	# Combine Data and Calculate Summary Statistics
+	data2 <- rbind(dataH0,dataHA)
+	means2 <- rowMeans(data2)
+	MSE2 <- mean(apply(data2, 1, var))
+
+	# Apply Gregor's Comparison
+	power_results <- greg_comparison(means2, 10, MSE2, alpha = 0.05)
+
+	# Check if 4th Mean != 1st Mean
+	if (power_results$significant[3] == "TRUE") {
+	correct_rejections <- correct_rejections + 1
+	}
+
+	# Reframe Data to Use Tukey's HSD
+	data2a <- data.frame(
+		Mean = rep(c("1","2","3","4","5"), each = 10),
+		Value = c(data2[1,],data2[2,],data2[3,],data2[4,],data2[5,])
+		)
+
+	# Apply Tukey's HSD
+	anova <- aov(Value ~ Mean, data = data2a)
+	tukey_results <- TukeyHSD(anova, conf.level = 0.95)
+	
+	# Check if 4th Mean != 1st Mean
+	if (tukey_results$Mean[3,4]<0.05) {
+	tukey_rejections <- tukey_rejections + 1
+	}
+
+	# Calculate Statistical Significance Between Gregor and Tukey Power
+	gregor_sig <- (power_results$significant[3] == "TRUE")
+	tukey_sig <- (tukey_results$Mean[3,4] < 0.05)
+
+		if(gregor_sig & tukey_sig) {both_reject <- both_reject +1}
+		if(gregor_sig & !tukey_sig) {gregor_only <- gregor_only + 1}
+		if(!gregor_sig & tukey_sig) {tukey_only <- tukey_only +1}
+		if(!gregor_sig & !tukey_sig) {neither <- neither +1}
+	}	
+
+	# McNemar's test
+ 	contingency <- matrix(c(both_reject, gregor_only, tukey_only, neither), nrow = 2)
+ 	result <- mcnemar.test(contingency)
+	
+
+return(c((correct_rejections / n_sim),(tukey_rejections / n_sim),result$p.value))
+}
+
+# Run Simulations & Compare Gregor's Comparison with Tukey's HSD
+# Delta = 0.5
+F <- simulate_power(0.5)
+print(F)
+# Delta = 1.0
+G <- simulate_power(1.0)
+print(G)
+# Delta = 1.5
+H <- simulate_power(1.5)
+print(H)
+# Delta = 2.0
+L <- simulate_power(2.0)
+print(L)
+
+# Compile Results
+gregor_power <- c(F[1],G[1],H[1],L[1])
+tukey_power <- c(F[2],G[2],H[2],L[2])
+p_value <- c(F[3],G[3],H[3],L[3])
+
+# Create a Comparison Plot
+x <- c(0.5,1.0,1.5,2.0)
+plot(gregor_power ~ x,
+	type="b",
+	xlab="Effect Size",
+	ylab="Power",
+	col="goldenrod1",
+	lwd=2,
+	pch=19,
+	main="Effect Size vs. Power for Gregor's and Tukey's Methods")
+lines(tukey_power ~ x,
+	col="orange4",
+	lwd=2,
+	pch=17,
+	type="b")
+legend("topleft",
+	legend = c("Gregor's Comparison","Tukey's HSD"),
+	col = c("goldenrod1","orange4"),
+	pch = c(19,17),
+	pt.cex = 2,
+	cex = 1.2,
+	text.col = "black",
+	inset = c(0.1,0.1))
+
+# Create Plot for P-Values
+plot(p_value ~ x,
+	type="b",
+	xlab="Effect Size",
+	ylab="P-Value",
+	col="violetred2",
+	lwd=2,
+	pch=18,
+	main="Gregor vs. Tukey: McNemar's Test for Statistical Significance")
+abline(h = 0.05, lty = 3, lwd = 1)
+legend("topright",
+	legend = c("P-Value"),
+	col = c("violetred2"),
+	pch = 18,
+	pt.cex = 2,
+	cex = 1.2,
+	text.col = "black",
+	inset = c(0.1,0.1))
