@@ -10,3 +10,7 @@ From there, the method works similarly to a typical confidence interval. We use 
 
 # Formula
 Putting it all together, the formula for Gregor's Comparison is as follows:
+
+GSD = t * SE, where t has a significance level of α/C(I,2) and df (φ * ((I*(J-1))) + I^2) / sqrt(J/10)).
+
+If the difference of two means exceeds the GSD, then the comparison is significant. Otherwise, it is not.
