@@ -50,7 +50,7 @@ greg_comparison <- function(means, J, MSE, alpha = 0.05) {
 	# Create Significance Vector
 		sig <- c()
 		for (i in 1:N) {
-		out <- c(ifelse(abs(diff[i])>CSD,TRUE,FALSE))
+		out <- c(ifelse(abs(diff[i])>GSD,TRUE,FALSE))
 		sig <- c(sig,out)}
 # Construct the data frame displaying significant differences
 	# Comp: tracks the number of comparisons made
@@ -73,6 +73,7 @@ greg_comparison(means, J = 9, MSE = 0.088, alpha = 0.05)
 	# Gregor's Comparison determined that the only non-significant differences were
 		# between Brands 1 & 4 and 3 & 5. Brand 2 is significantly different
 		# from all other brands.
+
 
 ## Part 3: Validating Gregor's Comparison via Simulation
 
