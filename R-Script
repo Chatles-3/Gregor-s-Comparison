@@ -67,14 +67,6 @@ greg_comparison <- function(means, J, MSE, alpha = 0.05) {
 	return(comparisons)
 	}
 
-# Demonstration with Example 11.5 (Oil Filters)
-means <- c(14.5,13.8,13.3,14.3,13.1)
-greg_comparison(means, J = 9, MSE = 0.088, alpha = 0.05)
-	# Gregor's Comparison determined that the only non-significant differences were
-		# between Brands 1 & 4 and 3 & 5. Brand 2 is significantly different
-		# from all other brands.
-
-
 ## Part 3: Validating Gregor's Comparison via Simulation
 
 # Set Up Simulation Function
