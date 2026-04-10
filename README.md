@@ -14,3 +14,31 @@ Putting it all together, the formula for Gregor's Comparison is as follows:
 GSD = t * SE, where t has a significance level of α/C(I,2) and df (φ * ((I*(J-1))) + I^2) / sqrt(J/10)).
 
 If the difference of two means exceeds the GSD, then the comparison is significant. Otherwise, it is not.
+
+# Usage Instructions
+This code does not require the installation of any extra packages. When running the code, the comparison function, titled "greg_comparison" will produce a table as an output; the rightmost column is the one to pay attention to, as it contains the significance determination for each comparison. "TRUE" means that the comparison is significant, while "FALSE" means the comparison is not significant. When simulating the power of both Gregor's and Tukey's method, the output will consist of a vector whose first value refers to Gregor's power, the second Tukey's power, and the third the p-value of their difference using McNemar's test.
+
+# Example
+The R script comes prepared with an example that will run if you run the entire code at once. You can find a description of the scenario here:
+
+An experiment compared 5 brands of automobile oil filters with respect to their ability to capture foreign material. The means of each brand are as follows: 14.5, 13.8, 13.3, 14.3, 13.1. There are five brands (I = 5) and each brand consists of nine filter observations (J = 9). An ANOVA revealed that the brands are significantly different in their ability to capture foreign material, but we must run a post-hoc test to determine which specific means are significant. Now, we run Gregor's Comparison:
+
+means <- c(14.5,13.8,13.3,14.3,13.1)
+greg_comparison(means, J = 9, MSE = 0.088, alpha = 0.05)
+
+ Comp group1 group2 diff significant
+1     1   14.5   13.8 -0.7        TRUE
+2     2   14.5   13.3 -1.2        TRUE
+3     3   14.5   14.3 -0.2       FALSE
+4     4   14.5   13.1 -1.4        TRUE
+5     5   13.8   13.3 -0.5        TRUE
+6     6   13.8   14.3  0.5        TRUE
+7     7   13.8   13.1 -0.7        TRUE
+8     8   13.3   14.3  1.0        TRUE
+9     9   13.3   13.1 -0.2       FALSE
+10   10   14.3   13.1 -1.2        TRUE
+
+Gregor's Comparison determined that the only non-significant differences were between Brands 1 & 4 and 3 & 5. Brand 2 is significantly different from all other brands. Brands 1 & 4 capture the most amount of material, brand 2 captures a middling amount of material, and brands 3 & 5 capture the least amount of material.
+
+# Applications
+Although Gregor’s Comparison successfully controls FWER to an acceptable range, it is significantly less powerful than Tukey’s HSD for middling effect sizes statistically, although the true difference is not very large. At these sizes, it is safer to use Tukey’s HSD, but for smaller and larger effect sizes, the two methods are practically interchangeable. One should not extrapolate Gregor’s Comparison beyond the tested scenarios, as the method likely breaks down for increasingly large values of I. However, this is likely not practically significant, as the tested scenarios describe frequent parameters for multiple comparisons.
